@@ -1,0 +1,21 @@
+server:
+  port: 8080
+
+database:
+  host: mysql
+  port: 3306
+  user: root
+  password: rootpassword
+  dbname: key_management
+
+jwt:
+  secret: "change-this-to-a-random-secret-key-in-production"
+  expiry_hours: 168  # 7 days
+
+encryption:
+  key: "change-this-to-32-byte-aes-key-prod"  # Must be 32 bytes for AES-256
+
+auth:
+  username: admin
+  # bcrypt hash of "admin123"
+  password_hash: "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"

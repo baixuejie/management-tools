@@ -12,42 +12,19 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
-    async login(username, password) {
-      try {
-        const response = await authAPI.login(username, password);
-        this.token = response.data.token;
-        this.username = username;
-        localStorage.setItem('token', this.token);
-        localStorage.setItem('username', username);
-        return true;
-      } catch (error) {
-        console.error('Login failed:', error);
-        throw error;
-      }
+    async login(username, password, rememberMe = false) {
+      const response = await authAPI.login(username, password, rememberMe);
+      this.token = response.data.token;
+      this.username = username;
+      localStorage.setItem('token', this.token);
+      localStorage.setItem('username', username);
     },
 
-    async logout() {
-      try {
-        await authAPI.logout();
-      } catch (error) {
-        console.error('Logout failed:', error);
-      } finally {
-        this.token = null;
-        this.username = null;
-        localStorage.removeItem('token');
-        localStorage.removeItem('username');
-      }
-    },
-
-    checkAuth() {
-      const token = localStorage.getItem('token');
-      const username = localStorage.getItem('username');
-      if (token && username) {
-        this.token = token;
-        this.username = username;
-        return true;
-      }
-      return false;
+    logout() {
+      this.token = null;
+      this.username = null;
+      localStorage.removeItem('token');
+      localStorage.removeItem('username');
     },
   },
 });

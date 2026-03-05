@@ -1,38 +1,35 @@
 <template>
-  <div class="config">
-    <van-nav-bar title="Configuration" left-arrow @click-left="goBack" />
-
-    <van-cell-group inset style="margin: 16px;">
-      <van-cell title="Copy Template Settings" />
+  <div class="config-page">
+    <van-cell-group inset style="margin: 12px 16px;">
+      <van-cell title="复制模板配置" label="使用 {{key}} 作为秘钥占位符" />
     </van-cell-group>
 
     <van-form @submit="onSubmit">
-      <van-cell-group inset style="margin: 16px;">
+      <van-cell-group inset style="margin: 12px 16px;">
         <van-field
           v-model="copyTemplate"
           name="copyTemplate"
-          label="Template"
+          label="模板"
           type="textarea"
-          placeholder="Enter copy template (use {{key}} as placeholder)"
+          placeholder="输入复制模板，如：API_KEY={{key}}"
           rows="4"
-          :rules="[{ required: true, message: 'Template is required' }]"
+          :rules="[{ required: true, message: '请输入模板' }]"
         />
       </van-cell-group>
 
-      <!-- Preview Section -->
-      <van-cell-group inset style="margin: 16px;">
-        <van-cell title="Preview" />
+      <!-- 预览 -->
+      <van-cell-group inset style="margin: 12px 16px;">
+        <van-cell title="预览效果" />
         <van-cell>
           <div class="preview-box">
-            <div class="preview-label">Example output:</div>
-            <div class="preview-content">{{ previewText }}</div>
+            <code>{{ previewText }}</code>
           </div>
         </van-cell>
       </van-cell-group>
 
       <div style="margin: 16px;">
         <van-button round block type="primary" native-type="submit" :loading="loading">
-          Save Template
+          保存模板
         </van-button>
       </div>
     </van-form>
@@ -41,44 +38,42 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { configAPI } from '../api';
 import { showToast } from 'vant';
-
-const router = useRouter();
 
 const copyTemplate = ref('{{key}}');
 const loading = ref(false);
 
 const previewText = computed(() => {
-  return copyTemplate.value.replace('{{key}}', 'example-key-12345');
+  return copyTemplate.value.replace('{{key}}', 'sk-example-12345abcde');
 });
 
-const loadTemplate = () => {
-  const savedTemplate = localStorage.getItem('copyTemplate');
-  if (savedTemplate) {
-    copyTemplate.value = savedTemplate;
+const loadTemplate = async () => {
+  try {
+    const response = await configAPI.getTemplate();
+    if (response.data.template) {
+      copyTemplate.value = response.data.template;
+    }
+  } catch {
+    // 使用默认值
   }
 };
 
 const onSubmit = async () => {
   if (!copyTemplate.value.includes('{{key}}')) {
-    showToast({ type: 'fail', message: 'Template must include {{key}} placeholder' });
+    showToast({ type: 'fail', message: '模板中必须包含 {{key}} 占位符' });
     return;
   }
 
   loading.value = true;
   try {
-    localStorage.setItem('copyTemplate', copyTemplate.value);
-    showToast({ type: 'success', message: 'Template saved successfully' });
+    await configAPI.updateTemplate(copyTemplate.value);
+    showToast({ type: 'success', message: '模板已保存' });
   } catch (error) {
-    showToast({ type: 'fail', message: 'Failed to save template' });
+    showToast({ type: 'fail', message: '保存失败' });
   } finally {
     loading.value = false;
   }
-};
-
-const goBack = () => {
-  router.back();
 };
 
 onMounted(() => {
@@ -87,34 +82,23 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.config {
-  min-height: 100vh;
+.config-page {
+  min-height: calc(100vh - 96px);
   background-color: #f7f8fa;
-  padding-bottom: 20px;
 }
 
 .preview-box {
   width: 100%;
   padding: 12px;
-  background-color: #f7f8fa;
+  background-color: #f0f2f5;
   border-radius: 4px;
-}
-
-.preview-label {
-  font-size: 12px;
-  color: #969799;
-  margin-bottom: 8px;
-}
-
-.preview-content {
-  font-size: 14px;
-  color: #323233;
+  font-size: 13px;
   word-break: break-all;
   white-space: pre-wrap;
-  font-family: monospace;
-  background-color: #fff;
-  padding: 8px;
-  border-radius: 4px;
-  border: 1px solid #ebedf0;
+}
+
+.preview-box code {
+  font-family: 'Courier New', monospace;
+  color: #323233;
 }
 </style>

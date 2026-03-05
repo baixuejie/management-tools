@@ -33,3 +33,18 @@ func AutoMigrate() error {
 		&models.Config{},
 	)
 }
+
+// Seed inserts default data if not already present.
+func Seed() error {
+	var count int64
+	DB.Model(&models.Config{}).Where("`key` = ?", "copy_template").Count(&count)
+
+	if count == 0 {
+		return DB.Create(&models.Config{
+			Key:         "copy_template",
+			Value:       "{{key}}",
+			Description: "Global copy template for key values",
+		}).Error
+	}
+	return nil
+}

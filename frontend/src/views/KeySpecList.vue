@@ -1,98 +1,84 @@
 <template>
   <div class="key-spec-list">
-    <van-nav-bar title="Key Specifications">
-      <template #right>
-        <van-icon name="setting-o" size="18" @click="goToConfig" />
-      </template>
-    </van-nav-bar>
     <van-pull-refresh v-model="refreshing" @refresh="onRefresh">
-      <van-empty v-if="!loading && keySpecs.length === 0" description="No key specifications yet" />
+      <van-empty v-if="!loading && keySpecs.length === 0" description="暂无秘钥规格" />
       <van-list
         v-else
         v-model:loading="loading"
         :finished="finished"
-        finished-text="No more data"
+        finished-text=""
         @load="onLoad"
       >
         <van-swipe-cell v-for="spec in keySpecs" :key="spec.id">
           <van-cell
             :title="spec.name"
-            :label="`${spec.description || 'No description'} • Created: ${formatDate(spec.created_at)}`"
+            :label="spec.description || '无描述'"
             is-link
             @click="goToKeys(spec.id)"
           />
           <template #right>
-            <van-button square type="primary" text="Edit" @click="editSpec(spec)" />
-            <van-button square type="danger" text="Delete" @click="confirmDelete(spec.id)" />
+            <van-button square type="primary" text="编辑" class="swipe-btn" @click="editSpec(spec)" />
+            <van-button square type="danger" text="删除" class="swipe-btn" @click="confirmDelete(spec.id)" />
           </template>
         </van-swipe-cell>
       </van-list>
     </van-pull-refresh>
-    <van-floating-bubble
-      icon="plus"
-      @click="showAddDialog = true"
-    />
 
-    <!-- Add Dialog -->
-    <van-popup v-model:show="showAddDialog" position="bottom" round :style="{ height: '40%' }">
+    <!-- 添加浮动按钮 -->
+    <div class="fab" @click="showAddDialog = true">
+      <van-icon name="plus" size="24" color="#fff" />
+    </div>
+
+    <!-- 添加规格弹窗 -->
+    <van-popup v-model:show="showAddDialog" position="bottom" round :style="{ minHeight: '30%' }">
       <div class="popup-header">
-        <h3>Add Key Specification</h3>
+        <h3>添加秘钥规格</h3>
       </div>
       <van-form @submit="addKeySpec">
         <van-cell-group inset>
           <van-field
             v-model="newSpec.name"
-            label="Name"
-            placeholder="Enter name"
-            :rules="[{ required: true, message: 'Name is required' }]"
+            label="名称"
+            placeholder="请输入规格名称"
+            :rules="[{ required: true, message: '请输入名称' }]"
           />
           <van-field
             v-model="newSpec.description"
-            label="Description"
+            label="描述"
             type="textarea"
-            placeholder="Enter description"
+            placeholder="请输入描述（可选）"
             rows="2"
           />
         </van-cell-group>
         <div style="margin: 16px;">
-          <van-button round block type="primary" native-type="submit">
-            Add
-          </van-button>
-          <van-button round block plain type="default" @click="showAddDialog = false" style="margin-top: 8px;">
-            Cancel
-          </van-button>
+          <van-button round block type="primary" native-type="submit">添加</van-button>
         </div>
       </van-form>
     </van-popup>
 
-    <!-- Edit Dialog -->
-    <van-popup v-model:show="showEditDialog" position="bottom" round :style="{ height: '40%' }">
+    <!-- 编辑规格弹窗 -->
+    <van-popup v-model:show="showEditDialog" position="bottom" round :style="{ minHeight: '30%' }">
       <div class="popup-header">
-        <h3>Edit Key Specification</h3>
+        <h3>编辑秘钥规格</h3>
       </div>
       <van-form @submit="updateSpec">
         <van-cell-group inset>
           <van-field
             v-model="editingSpec.name"
-            label="Name"
-            placeholder="Enter name"
-            :rules="[{ required: true, message: 'Name is required' }]"
+            label="名称"
+            placeholder="请输入规格名称"
+            :rules="[{ required: true, message: '请输入名称' }]"
           />
           <van-field
             v-model="editingSpec.description"
-            label="Description"
+            label="描述"
             type="textarea"
-            placeholder="Enter description"
+            placeholder="请输入描述（可选）"
             rows="2"
           />
         </van-cell-group>
         <div style="margin: 16px;">
-          <van-button round block type="primary" native-type="submit">
-            Update
-          </van-button>
-          <van-button round block plain type="default" @click="showEditDialog = false" style="margin-top: 8px;">
-            Cancel
-          </van-button>
+          <van-button round block type="primary" native-type="submit">保存</van-button>
         </div>
       </van-form>
     </van-popup>
@@ -116,19 +102,13 @@ const showEditDialog = ref(false);
 const newSpec = ref({ name: '', description: '' });
 const editingSpec = ref({ id: null, name: '', description: '' });
 
-const formatDate = (dateString) => {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-};
-
 const loadKeySpecs = async () => {
   try {
     const response = await keySpecAPI.list();
     keySpecs.value = response.data || [];
     finished.value = true;
   } catch (error) {
-    showToast({ type: 'fail', message: 'Failed to load key specs' });
+    showToast({ type: 'fail', message: '加载规格列表失败' });
   }
 };
 
@@ -146,23 +126,15 @@ const goToKeys = (specId) => {
   router.push(`/keys/${specId}`);
 };
 
-const goToConfig = () => {
-  router.push('/config');
-};
-
 const addKeySpec = async () => {
-  if (!newSpec.value.name) {
-    showToast({ type: 'fail', message: 'Name is required' });
-    return;
-  }
   try {
     await keySpecAPI.create(newSpec.value);
-    showToast({ type: 'success', message: 'Key spec added' });
+    showToast({ type: 'success', message: '添加成功' });
     newSpec.value = { name: '', description: '' };
     showAddDialog.value = false;
     await loadKeySpecs();
   } catch (error) {
-    showToast({ type: 'fail', message: 'Failed to add key spec' });
+    showToast({ type: 'fail', message: '添加失败' });
   }
 };
 
@@ -172,42 +144,27 @@ const editSpec = (spec) => {
 };
 
 const updateSpec = async () => {
-  if (!editingSpec.value.name) {
-    showToast({ type: 'fail', message: 'Name is required' });
-    return;
-  }
   try {
     await keySpecAPI.update(editingSpec.value.id, {
       name: editingSpec.value.name,
       description: editingSpec.value.description,
     });
-    showToast({ type: 'success', message: 'Key spec updated' });
+    showToast({ type: 'success', message: '更新成功' });
     showEditDialog.value = false;
     await loadKeySpecs();
   } catch (error) {
-    showToast({ type: 'fail', message: 'Failed to update key spec' });
+    showToast({ type: 'fail', message: '更新失败' });
   }
 };
 
 const confirmDelete = async (id) => {
   try {
-    await showConfirmDialog({
-      title: 'Confirm Delete',
-      message: 'Are you sure you want to delete this key specification?',
-    });
-    await deleteSpec(id);
-  } catch {
-    // User cancelled
-  }
-};
-
-const deleteSpec = async (id) => {
-  try {
+    await showConfirmDialog({ title: '确认删除', message: '确定要删除这个秘钥规格吗？' });
     await keySpecAPI.delete(id);
-    showToast({ type: 'success', message: 'Key spec deleted' });
+    showToast({ type: 'success', message: '删除成功' });
     await loadKeySpecs();
-  } catch (error) {
-    showToast({ type: 'fail', message: 'Failed to delete key spec' });
+  } catch {
+    // 用户取消
   }
 };
 
@@ -218,8 +175,28 @@ onMounted(() => {
 
 <style scoped>
 .key-spec-list {
-  min-height: 100vh;
+  min-height: calc(100vh - 96px);
   background-color: #f7f8fa;
+}
+
+.swipe-btn {
+  height: 100%;
+}
+
+.fab {
+  position: fixed;
+  right: 20px;
+  bottom: 80px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #1989fa;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(25, 137, 250, 0.4);
+  cursor: pointer;
+  z-index: 100;
 }
 
 .popup-header {

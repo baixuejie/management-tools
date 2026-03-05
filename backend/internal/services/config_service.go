@@ -20,7 +20,7 @@ func NewConfigService(db *gorm.DB) *ConfigService {
 // Returns error only for database errors (not for not found).
 func (s *ConfigService) GetCopyTemplate() (string, error) {
 	var config models.Config
-	err := s.db.Where("key = ?", "copy_template").First(&config).Error
+	err := s.db.Where("`key` = ?", "copy_template").First(&config).Error
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -46,7 +46,7 @@ func (s *ConfigService) UpdateCopyTemplate(template string) error {
 	// Use Save which will update if exists or create if not
 	// First check if record exists
 	var existing models.Config
-	err := s.db.Where("key = ?", "copy_template").First(&existing).Error
+	err := s.db.Where("`key` = ?", "copy_template").First(&existing).Error
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

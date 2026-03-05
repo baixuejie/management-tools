@@ -1,35 +1,35 @@
 <template>
   <div class="login-container">
     <div class="login-header">
-      <h1>Key Management</h1>
-      <p>Please login to continue</p>
+      <h1>秘钥管理工具</h1>
+      <p>请登录后使用</p>
     </div>
     <van-form @submit="onSubmit">
       <van-cell-group inset>
         <van-field
           v-model="username"
           name="username"
-          label="Username"
-          placeholder="Enter username"
-          :rules="[{ required: true, message: 'Username is required' }]"
+          label="用户名"
+          placeholder="请输入用户名"
+          :rules="[{ required: true, message: '请输入用户名' }]"
         />
         <van-field
           v-model="password"
           type="password"
           name="password"
-          label="Password"
-          placeholder="Enter password"
-          :rules="[{ required: true, message: 'Password is required' }]"
+          label="密码"
+          placeholder="请输入密码"
+          :rules="[{ required: true, message: '请输入密码' }]"
         />
         <van-cell center>
           <template #title>
-            <van-checkbox v-model="rememberMe">Remember me</van-checkbox>
+            <van-checkbox v-model="rememberMe">记住我</van-checkbox>
           </template>
         </van-cell>
       </van-cell-group>
       <div style="margin: 16px;">
         <van-button round block type="primary" native-type="submit" :loading="loading">
-          Login
+          登录
         </van-button>
       </div>
     </van-form>
@@ -37,7 +37,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import { showToast } from 'vant';
@@ -50,29 +50,14 @@ const password = ref('');
 const rememberMe = ref(false);
 const loading = ref(false);
 
-onMounted(() => {
-  const savedUsername = localStorage.getItem('savedUsername');
-  if (savedUsername) {
-    username.value = savedUsername;
-    rememberMe.value = true;
-  }
-});
-
 const onSubmit = async () => {
   loading.value = true;
   try {
-    await authStore.login(username.value, password.value);
-
-    if (rememberMe.value) {
-      localStorage.setItem('savedUsername', username.value);
-    } else {
-      localStorage.removeItem('savedUsername');
-    }
-
-    showToast({ type: 'success', message: 'Login successful' });
+    await authStore.login(username.value, password.value, rememberMe.value);
+    showToast({ type: 'success', message: '登录成功' });
     router.push('/key-specs');
   } catch (error) {
-    showToast({ type: 'fail', message: 'Login failed' });
+    showToast({ type: 'fail', message: '用户名或密码错误' });
   } finally {
     loading.value = false;
   }
@@ -95,7 +80,7 @@ const onSubmit = async () => {
 }
 
 .login-header h1 {
-  font-size: 28px;
+  font-size: 24px;
   font-weight: bold;
   color: #323233;
   margin-bottom: 8px;

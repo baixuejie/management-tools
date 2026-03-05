@@ -29,6 +29,11 @@ func main() {
 		log.Fatal("Failed to migrate database:", err)
 	}
 
+	// Seed default data
+	if err := database.Seed(); err != nil {
+		log.Fatal("Failed to seed database:", err)
+	}
+
 	// Initialize services
 	keySpecService := services.NewKeySpecService(database.DB)
 	keyService := services.NewKeyService(database.DB)

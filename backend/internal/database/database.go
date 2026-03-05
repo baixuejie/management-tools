@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/baixuejie/key-management-tool/internal/config"
-	"github.com/baixuejie/key-management-tool/internal/models"
+	"github.com/baixuejie/key-management-tool/backend/internal/config"
+	"github.com/baixuejie/key-management-tool/backend/internal/models"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )

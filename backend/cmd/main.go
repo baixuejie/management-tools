@@ -5,8 +5,8 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/baixuejie/key-management-tool/internal/config"
-	"github.com/baixuejie/key-management-tool/internal/database"
+	"github.com/baixuejie/key-management-tool/backend/internal/config"
+	"github.com/baixuejie/key-management-tool/backend/internal/database"
 	"github.com/gin-gonic/gin"
 )
 

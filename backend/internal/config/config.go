@@ -1,6 +1,9 @@
 package config
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/spf13/viper"
 )
 
@@ -38,9 +41,29 @@ type AuthConfig struct {
 	PasswordHash string `mapstructure:"password_hash"`
 }
 
+func (c *Config) Validate() error {
+	if len(c.Encryption.Key) != 32 {
+		return fmt.Errorf("encryption key must be exactly 32 bytes, got %d", len(c.Encryption.Key))
+	}
+	if len(c.JWT.Secret) < 32 {
+		return fmt.Errorf("JWT secret must be at least 32 characters, got %d", len(c.JWT.Secret))
+	}
+	if c.Auth.Username == "" {
+		return fmt.Errorf("auth username cannot be empty")
+	}
+	if c.Auth.PasswordHash == "" {
+		return fmt.Errorf("auth password hash cannot be empty")
+	}
+	return nil
+}
+
 func Load(path string) (*Config, error) {
 	viper.SetConfigFile(path)
 	viper.SetConfigType("yaml")
+
+	viper.AutomaticEnv()
+	viper.SetEnvPrefix("KM")
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, err
@@ -49,6 +72,10 @@ func Load(path string) (*Config, error) {
 	var cfg Config
 	if err := viper.Unmarshal(&cfg); err != nil {
 		return nil, err
+	}
+
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("config validation failed: %w", err)
 	}
 
 	return &cfg, nil

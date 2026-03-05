@@ -3,8 +3,14 @@ package config
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/spf13/viper"
+)
+
+var (
+	globalConfig *Config
+	once         sync.Once
 )
 
 type Config struct {
@@ -78,5 +84,15 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("config validation failed: %w", err)
 	}
 
+	// Set global config
+	once.Do(func() {
+		globalConfig = &cfg
+	})
+
 	return &cfg, nil
+}
+
+// GetConfig returns the global config instance
+func GetConfig() *Config {
+	return globalConfig
 }

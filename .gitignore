@@ -18,3 +18,7 @@ go.work
 # Build
 /bin/
 /dist/
+backend/cmd/server
+
+# Config with secrets
+backend/config.yaml

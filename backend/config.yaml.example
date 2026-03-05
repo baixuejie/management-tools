@@ -1,0 +1,21 @@
+server:
+  port: 8080
+
+database:
+  host: mysql
+  port: 3306
+  user: root
+  password: "your-database-password-here"
+  dbname: key_management
+
+jwt:
+  secret: "your-jwt-secret-at-least-32-chars-here"
+  expiry_hours: 168  # 7 days
+
+encryption:
+  key: "your-32-byte-encryption-key-here"  # Must be 32 bytes for AES-256
+
+auth:
+  username: admin
+  # bcrypt hash of your password (use bcrypt to generate)
+  password_hash: "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"

@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: km-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: key_management
+      MYSQL_USER: kmuser
+      MYSQL_PASSWORD: kmpassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - km-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: km-backend
+    environment:
+      KM_DATABASE_HOST: mysql
+      KM_DATABASE_PORT: 3306
+      KM_DATABASE_USER: kmuser
+      KM_DATABASE_PASSWORD: kmpassword
+      KM_DATABASE_DBNAME: key_management
+      KM_JWT_SECRET: your-secret-key-change-in-production
+      KM_ENCRYPTION_KEY: 12345678901234567890123456789012
+      KM_AUTH_USERNAME: admin
+      KM_AUTH_PASSWORD_HASH: $$2a$$10$$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - km-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: km-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - km-network
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+
+networks:
+  km-network:
+    driver: bridge

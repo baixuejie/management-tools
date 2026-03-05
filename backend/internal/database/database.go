@@ -8,6 +8,7 @@ import (
 	"github.com/baixuejie/key-management-tool/backend/internal/models"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 var DB *gorm.DB
@@ -28,23 +29,48 @@ func Connect(cfg *config.DatabaseConfig) error {
 
 func AutoMigrate() error {
 	return DB.AutoMigrate(
+		&models.User{},
 		&models.KeySpec{},
 		&models.Key{},
 		&models.Config{},
+		&models.CostRecord{},
+		&models.Customer{},
+		&models.Transaction{},
 	)
 }
 
-// Seed inserts default data if not already present.
-func Seed() error {
-	var count int64
-	DB.Model(&models.Config{}).Where("`key` = ?", "copy_template").Count(&count)
-
-	if count == 0 {
-		return DB.Create(&models.Config{
-			Key:         "copy_template",
-			Value:       "{{key}}",
-			Description: "Global copy template for key values",
-		}).Error
+func SeedDefaults() error {
+	defaultUsers := []models.User{
+		{
+			Username:     "admin",
+			PasswordHash: "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy",
+			DisplayName:  "White",
+		},
+		{
+			Username:     "fanchen",
+			PasswordHash: "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy",
+			DisplayName:  "Fanchen",
+		},
 	}
+
+	if err := DB.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "username"}},
+		DoNothing: true,
+	}).Create(&defaultUsers).Error; err != nil {
+		return fmt.Errorf("failed to seed users: %w", err)
+	}
+
+	defaultTemplate := models.Config{
+		Key:         "copy_template",
+		Value:       "{{key}}",
+		Description: "Global copy template for key values",
+	}
+	if err := DB.Clauses(clause.OnConflict{
+		Columns:   []clause.Column{{Name: "key"}},
+		DoNothing: true,
+	}).Create(&defaultTemplate).Error; err != nil {
+		return fmt.Errorf("failed to seed config defaults: %w", err)
+	}
+
 	return nil
 }

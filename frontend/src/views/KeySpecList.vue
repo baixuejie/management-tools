@@ -1,7 +1,7 @@
-<template>
+﻿<template>
   <div class="key-spec-list">
     <van-pull-refresh v-model="refreshing" @refresh="onRefresh">
-      <van-empty v-if="!loading && keySpecs.length === 0" description="暂无秘钥规格" />
+      <van-empty v-if="!loading && keySpecs.length === 0" description="暂无规格" />
       <van-list
         v-else
         v-model:loading="loading"
@@ -9,13 +9,38 @@
         finished-text=""
         @load="onLoad"
       >
-        <van-swipe-cell v-for="spec in keySpecs" :key="spec.id">
+        <van-swipe-cell v-for="(spec, index) in keySpecs" :key="spec.id">
           <van-cell
-            :title="spec.name"
-            :label="spec.description || '无描述'"
+            :label="spec.description || '暂无描述'"
             is-link
             @click="goToKeys(spec.id)"
-          />
+          >
+            <template #title>
+              <div class="spec-title-row">
+                <span>{{ spec.name }}</span>
+                <div class="order-actions">
+                  <van-button
+                    size="mini"
+                    plain
+                    type="primary"
+                    :disabled="index === 0 || ordering"
+                    @click.stop="moveSpec(index, -1)"
+                  >
+                    上移
+                  </van-button>
+                  <van-button
+                    size="mini"
+                    plain
+                    type="primary"
+                    :disabled="index === keySpecs.length - 1 || ordering"
+                    @click.stop="moveSpec(index, 1)"
+                  >
+                    下移
+                  </van-button>
+                </div>
+              </div>
+            </template>
+          </van-cell>
           <template #right>
             <van-button square type="primary" text="编辑" class="swipe-btn" @click="editSpec(spec)" />
             <van-button square type="danger" text="删除" class="swipe-btn" @click="confirmDelete(spec.id)" />
@@ -24,15 +49,13 @@
       </van-list>
     </van-pull-refresh>
 
-    <!-- 添加浮动按钮 -->
     <div class="fab" @click="showAddDialog = true">
       <van-icon name="plus" size="24" color="#fff" />
     </div>
 
-    <!-- 添加规格弹窗 -->
     <van-popup v-model:show="showAddDialog" position="bottom" round :style="{ minHeight: '30%' }">
       <div class="popup-header">
-        <h3>添加秘钥规格</h3>
+        <h3>新增规格</h3>
       </div>
       <van-form @submit="addKeySpec">
         <van-cell-group inset>
@@ -51,15 +74,14 @@
           />
         </van-cell-group>
         <div style="margin: 16px;">
-          <van-button round block type="primary" native-type="submit">添加</van-button>
+          <van-button round block type="primary" native-type="submit">创建</van-button>
         </div>
       </van-form>
     </van-popup>
 
-    <!-- 编辑规格弹窗 -->
     <van-popup v-model:show="showEditDialog" position="bottom" round :style="{ minHeight: '30%' }">
       <div class="popup-header">
-        <h3>编辑秘钥规格</h3>
+        <h3>编辑规格</h3>
       </div>
       <van-form @submit="updateSpec">
         <van-cell-group inset>
@@ -99,6 +121,7 @@ const finished = ref(false);
 const refreshing = ref(false);
 const showAddDialog = ref(false);
 const showEditDialog = ref(false);
+const ordering = ref(false);
 const newSpec = ref({ name: '', description: '' });
 const editingSpec = ref({ id: null, name: '', description: '' });
 
@@ -108,7 +131,7 @@ const loadKeySpecs = async () => {
     keySpecs.value = response.data || [];
     finished.value = true;
   } catch (error) {
-    showToast({ type: 'fail', message: '加载规格列表失败' });
+    showToast({ type: 'fail', message: '加载规格失败' });
   }
 };
 
@@ -123,18 +146,43 @@ const onRefresh = async () => {
 };
 
 const goToKeys = (specId) => {
-  router.push(`/keys/${specId}`);
+  router.push(`/keys?specId=${specId}`);
+};
+
+const moveSpec = async (index, delta) => {
+  const targetIndex = index + delta;
+  if (targetIndex < 0 || targetIndex >= keySpecs.value.length) {
+    return;
+  }
+
+  const original = [...keySpecs.value];
+  const next = [...keySpecs.value];
+  [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+  keySpecs.value = next;
+
+  ordering.value = true;
+  try {
+    await keySpecAPI.reorder(next.map((item) => item.id));
+    showToast({ type: 'success', message: '排序已更新' });
+  } catch (error) {
+    keySpecs.value = original;
+    const msg = error.response?.data?.error || '排序更新失败';
+    showToast({ type: 'fail', message: msg });
+  } finally {
+    ordering.value = false;
+  }
 };
 
 const addKeySpec = async () => {
   try {
     await keySpecAPI.create(newSpec.value);
-    showToast({ type: 'success', message: '添加成功' });
+    showToast({ type: 'success', message: '创建成功' });
     newSpec.value = { name: '', description: '' };
     showAddDialog.value = false;
     await loadKeySpecs();
   } catch (error) {
-    showToast({ type: 'fail', message: '添加失败' });
+    const msg = error.response?.data?.error || '创建失败';
+    showToast({ type: 'fail', message: msg });
   }
 };
 
@@ -153,13 +201,14 @@ const updateSpec = async () => {
     showEditDialog.value = false;
     await loadKeySpecs();
   } catch (error) {
-    showToast({ type: 'fail', message: '更新失败' });
+    const msg = error.response?.data?.error || '更新失败';
+    showToast({ type: 'fail', message: msg });
   }
 };
 
 const confirmDelete = async (id) => {
   try {
-    await showConfirmDialog({ title: '确认删除', message: '确定要删除这个秘钥规格吗？' });
+    await showConfirmDialog({ title: '确认', message: '确定删除这个规格吗？' });
     await keySpecAPI.delete(id);
     showToast({ type: 'success', message: '删除成功' });
     await loadKeySpecs();
@@ -168,9 +217,7 @@ const confirmDelete = async (id) => {
   }
 };
 
-onMounted(() => {
-  loadKeySpecs();
-});
+onMounted(loadKeySpecs);
 </script>
 
 <style scoped>
@@ -183,6 +230,18 @@ onMounted(() => {
   height: 100%;
 }
 
+.spec-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.order-actions {
+  display: flex;
+  gap: 6px;
+}
+
 .fab {
   position: fixed;
   right: 20px;
@@ -190,7 +249,7 @@ onMounted(() => {
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background: #1989fa;
+  background: linear-gradient(135deg, #4facfe, #00f2fe);
   display: flex;
   align-items: center;
   justify-content: center;

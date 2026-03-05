@@ -35,10 +35,11 @@ func (h *KeySpecHandler) CreateKeySpec(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
-		"id":          keySpec.ID,
-		"name":        keySpec.Name,
-		"description": keySpec.Description,
-		"created_at":  keySpec.CreatedAt,
+		"id":            keySpec.ID,
+		"name":          keySpec.Name,
+		"description":   keySpec.Description,
+		"display_order": keySpec.DisplayOrder,
+		"created_at":    keySpec.CreatedAt,
 	})
 }
 
@@ -53,10 +54,11 @@ func (h *KeySpecHandler) ListKeySpecs(c *gin.Context) {
 	response := make([]gin.H, len(keySpecs))
 	for i, spec := range keySpecs {
 		response[i] = gin.H{
-			"id":          spec.ID,
-			"name":        spec.Name,
-			"description": spec.Description,
-			"created_at":  spec.CreatedAt,
+			"id":            spec.ID,
+			"name":          spec.Name,
+			"description":   spec.Description,
+			"display_order": spec.DisplayOrder,
+			"created_at":    spec.CreatedAt,
 		}
 	}
 
@@ -83,10 +85,11 @@ func (h *KeySpecHandler) GetKeySpec(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"id":          keySpec.ID,
-		"name":        keySpec.Name,
-		"description": keySpec.Description,
-		"created_at":  keySpec.CreatedAt,
+		"id":            keySpec.ID,
+		"name":          keySpec.Name,
+		"description":   keySpec.Description,
+		"display_order": keySpec.DisplayOrder,
+		"created_at":    keySpec.CreatedAt,
 	})
 }
 
@@ -122,10 +125,11 @@ func (h *KeySpecHandler) UpdateKeySpec(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"id":          keySpec.ID,
-		"name":        keySpec.Name,
-		"description": keySpec.Description,
-		"updated_at":  keySpec.UpdatedAt,
+		"id":            keySpec.ID,
+		"name":          keySpec.Name,
+		"description":   keySpec.Description,
+		"display_order": keySpec.DisplayOrder,
+		"updated_at":    keySpec.UpdatedAt,
 	})
 }
 
@@ -149,4 +153,32 @@ func (h *KeySpecHandler) DeleteKeySpec(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Key spec deleted successfully"})
+}
+
+// ReorderKeySpecs handles PUT /api/key-specs/reorder
+func (h *KeySpecHandler) ReorderKeySpecs(c *gin.Context) {
+	var req struct {
+		IDs []uint `json:"ids" binding:"required"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if len(req.IDs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ids cannot be empty"})
+		return
+	}
+
+	if err := h.service.ReorderKeySpecs(req.IDs); err != nil {
+		if err.Error() == "ids cannot be empty" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Key spec order updated successfully"})
 }

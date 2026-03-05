@@ -1,0 +1,169 @@
+﻿# =============================================================================
+# Sub2API Docker Compose - Local Directory Version
+# =============================================================================
+# 说明：
+# 1) 使用本地目录持久化，便于整体迁移
+# 2) 后端配置文件外置：./config/config.yaml
+# 3) PostgreSQL 初始化脚本：./postgres_init/*.sql
+#    注意：初始化脚本仅在 postgres_data 为空时自动执行一次
+# =============================================================================
+
+services:
+  # ==========================================================================
+  # Sub2API Application
+  # ==========================================================================
+  sub2api:
+    image: weishaw/sub2api:latest
+    container_name: sub2api
+    restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 100000
+        hard: 100000
+    ports:
+      - "${BIND_HOST:-0.0.0.0}:${SERVER_PORT:-8080}:8080"
+    volumes:
+      - ./data:/app/data
+      - ./config/config.yaml:/app/data/config.yaml:ro
+    environment:
+      # 自动初始化
+      AUTO_SETUP: "true"
+
+      # 外置配置文件（如果程序支持该变量会优先读取）
+      CONFIG_FILE: /app/data/config.yaml
+
+      # Server
+      SERVER_HOST: 0.0.0.0
+      SERVER_PORT: 8080
+      SERVER_MODE: ${SERVER_MODE:-release}
+      RUN_MODE: ${RUN_MODE:-standard}
+
+      # Database (PostgreSQL)
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USER: ${POSTGRES_USER:-sub2api}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      DATABASE_DBNAME: ${POSTGRES_DB:-sub2api}
+      DATABASE_SSLMODE: disable
+
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      REDIS_DB: ${REDIS_DB:-0}
+      REDIS_ENABLE_TLS: ${REDIS_ENABLE_TLS:-false}
+
+      # Admin
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@sub2api.local}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-}
+      JWT_EXPIRE_HOUR: ${JWT_EXPIRE_HOUR:-24}
+
+      # TOTP
+      TOTP_ENCRYPTION_KEY: ${TOTP_ENCRYPTION_KEY:-}
+
+      # Timezone
+      TZ: ${TZ:-Asia/Shanghai}
+
+      # Gemini OAuth
+      GEMINI_OAUTH_CLIENT_ID: ${GEMINI_OAUTH_CLIENT_ID:-}
+      GEMINI_OAUTH_CLIENT_SECRET: ${GEMINI_OAUTH_CLIENT_SECRET:-}
+      GEMINI_OAUTH_SCOPES: ${GEMINI_OAUTH_SCOPES:-}
+      GEMINI_QUOTA_POLICY: ${GEMINI_QUOTA_POLICY:-}
+
+      # Security URL allowlist
+      SECURITY_URL_ALLOWLIST_ENABLED: ${SECURITY_URL_ALLOWLIST_ENABLED:-false}
+      SECURITY_URL_ALLOWLIST_ALLOW_INSECURE_HTTP: ${SECURITY_URL_ALLOWLIST_ALLOW_INSECURE_HTTP:-false}
+      SECURITY_URL_ALLOWLIST_ALLOW_PRIVATE_HOSTS: ${SECURITY_URL_ALLOWLIST_ALLOW_PRIVATE_HOSTS:-false}
+      SECURITY_URL_ALLOWLIST_UPSTREAM_HOSTS: ${SECURITY_URL_ALLOWLIST_UPSTREAM_HOSTS:-}
+
+      # Update proxy
+      UPDATE_PROXY_URL: ${UPDATE_PROXY_URL:-}
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - sub2api-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ==========================================================================
+  # PostgreSQL Database
+  # ==========================================================================
+  postgres:
+    image: postgres:18-alpine
+    container_name: sub2api-postgres
+    restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 100000
+        hard: 100000
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+      - ./postgres_init:/docker-entrypoint-initdb.d:ro
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sub2api}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-sub2api}
+      PGDATA: /var/lib/postgresql/data
+      TZ: ${TZ:-Asia/Shanghai}
+    command: ["postgres", "-c", "listen_addresses=*"]
+    ports:
+      - "${DB_BIND_HOST:-0.0.0.0}:${POSTGRES_EXPOSE_PORT:-5433}:5432"
+    networks:
+      - sub2api-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sub2api} -d ${POSTGRES_DB:-sub2api}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    # 如需仅内网/本机访问，请把 DB_BIND_HOST 改为 127.0.0.1 或内网IP
+
+  # ==========================================================================
+  # Redis Cache
+  # ==========================================================================
+  redis:
+    image: redis:8-alpine
+    container_name: sub2api-redis
+    restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 100000
+        hard: 100000
+    volumes:
+      - ./redis_data:/data
+    command: >
+      sh -c '
+        redis-server
+        --save 60 1
+        --appendonly yes
+        --appendfsync everysec
+        ${REDIS_PASSWORD:+--requirepass "$REDIS_PASSWORD"}'
+    environment:
+      TZ: ${TZ:-Asia/Shanghai}
+      REDISCLI_AUTH: ${REDIS_PASSWORD:-}
+    networks:
+      - sub2api-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  sub2api-network:
+    driver: bridge

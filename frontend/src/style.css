@@ -6,7 +6,7 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica,
-    Segoe UI, Arial, Roboto, 'PingFang SC', 'miui', 'Hiragino Sans GB',
+    Segoe UI, Arial, Roboto, 'PingFang SC', 'Hiragino Sans GB',
     'Microsoft Yahei', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -19,7 +19,10 @@ body {
   min-height: 100vh;
 }
 
-/* 桌面端适配：>768px 内容居中，最大宽度 600px */
+.van-button:active {
+  transform: scale(0.98);
+}
+
 @media (min-width: 769px) {
   #app {
     max-width: 600px;

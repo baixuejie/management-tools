@@ -1,5 +1,5 @@
-<script setup>
-import { ref, computed } from 'vue';
+﻿<script setup>
+import { computed } from 'vue';
 import { useAuthStore } from './stores/auth';
 import { useRouter, useRoute } from 'vue-router';
 
@@ -10,26 +10,31 @@ const route = useRoute();
 const showLayout = computed(() => authStore.isAuthenticated && route.path !== '/login');
 
 const activeTab = computed(() => {
-  if (route.path.startsWith('/keys') || route.path === '/key-specs' || route.path === '/') return 0;
-  if (route.path === '/config') return 1;
+  if (route.path.startsWith('/ledger')) return 0;
+  if (route.path.startsWith('/keys')) return 1;
+  if (route.path.startsWith('/more')) return 2;
   return 0;
 });
 
 const onTabChange = (index) => {
-  if (index === 0) router.push('/key-specs');
-  if (index === 1) router.push('/config');
+  if (index === 0) router.push('/ledger');
+  if (index === 1) router.push('/keys');
+  if (index === 2) router.push('/more');
 };
 
 const pageTitle = computed(() => {
-  if (route.path === '/key-specs') return '秘钥管理';
-  if (route.path.startsWith('/keys/')) return '秘钥列表';
-  if (route.path === '/config') return '设置';
-  return '工具箱';
+  if (route.path.startsWith('/ledger')) return '记账';
+  if (route.path.startsWith('/keys')) return '秘钥';
+  if (route.path === '/more') return '更多';
+  if (route.path === '/more/costs') return '成本记录';
+  if (route.path === '/more/customers') return '购买人管理';
+  if (route.path === '/more/specs') return '规格管理';
+  if (route.path === '/more/template') return '复制模板';
+  if (route.path === '/more/profile') return '个人信息';
+  return '管理工具';
 });
 
-const showBack = computed(() => {
-  return route.path.startsWith('/keys/');
-});
+const showBack = computed(() => route.path.startsWith('/more/') && route.path !== '/more');
 
 const goBack = () => {
   router.back();
@@ -43,7 +48,6 @@ const logout = () => {
 
 <template>
   <div id="app-container">
-    <!-- 顶部 NavBar -->
     <van-nav-bar
       v-if="showLayout"
       :title="pageTitle"
@@ -51,23 +55,22 @@ const logout = () => {
       @click-left="goBack"
     >
       <template #right>
-        <van-icon name="cross" size="18" @click="logout" />
+        <van-icon name="sign" size="18" @click="logout" />
       </template>
     </van-nav-bar>
 
-    <!-- 内容区 -->
     <div :class="{ 'page-content': showLayout }">
       <router-view />
     </div>
 
-    <!-- 底部 Tabbar -->
     <van-tabbar
       v-if="showLayout"
       :model-value="activeTab"
       @change="onTabChange"
     >
-      <van-tabbar-item icon="apps-o">工具</van-tabbar-item>
-      <van-tabbar-item icon="setting-o">设置</van-tabbar-item>
+      <van-tabbar-item icon="balance-list-o">记账</van-tabbar-item>
+      <van-tabbar-item icon="apps-o">秘钥</van-tabbar-item>
+      <van-tabbar-item icon="setting-o">更多</van-tabbar-item>
     </van-tabbar>
   </div>
 </template>
@@ -78,6 +81,6 @@ const logout = () => {
 }
 
 .page-content {
-  padding-bottom: 66px; /* tabbar 高度 + 留白 */
+  padding-bottom: 66px;
 }
 </style>

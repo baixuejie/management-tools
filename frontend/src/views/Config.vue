@@ -1,7 +1,7 @@
-<template>
+﻿<template>
   <div class="config-page">
     <van-cell-group inset style="margin: 12px 16px;">
-      <van-cell title="复制模板配置" label="使用 {{key}} 作为秘钥占位符" />
+      <van-cell title="复制模板" label="使用 {{key}} 作为秘钥占位符" />
     </van-cell-group>
 
     <van-form @submit="onSubmit">
@@ -11,15 +11,14 @@
           name="copyTemplate"
           label="模板"
           type="textarea"
-          placeholder="输入复制模板，如：API_KEY={{key}}"
+          placeholder="例如：API_KEY={{key}}"
           rows="4"
           :rules="[{ required: true, message: '请输入模板' }]"
         />
       </van-cell-group>
 
-      <!-- 预览 -->
       <van-cell-group inset style="margin: 12px 16px;">
-        <van-cell title="预览效果" />
+        <van-cell title="预览" />
         <van-cell>
           <div class="preview-box">
             <code>{{ previewText }}</code>
@@ -44,9 +43,7 @@ import { showToast } from 'vant';
 const copyTemplate = ref('{{key}}');
 const loading = ref(false);
 
-const previewText = computed(() => {
-  return copyTemplate.value.replace('{{key}}', 'sk-example-12345abcde');
-});
+const previewText = computed(() => copyTemplate.value.replace('{{key}}', 'sk-example-12345abcde'));
 
 const loadTemplate = async () => {
   try {
@@ -61,24 +58,23 @@ const loadTemplate = async () => {
 
 const onSubmit = async () => {
   if (!copyTemplate.value.includes('{{key}}')) {
-    showToast({ type: 'fail', message: '模板中必须包含 {{key}} 占位符' });
+    showToast({ type: 'fail', message: '模板必须包含 {{key}}' });
     return;
   }
 
   loading.value = true;
   try {
     await configAPI.updateTemplate(copyTemplate.value);
-    showToast({ type: 'success', message: '模板已保存' });
+    showToast({ type: 'success', message: '模板保存成功' });
   } catch (error) {
-    showToast({ type: 'fail', message: '保存失败' });
+    const msg = error.response?.data?.error || '保存失败';
+    showToast({ type: 'fail', message: msg });
   } finally {
     loading.value = false;
   }
 };
 
-onMounted(() => {
-  loadTemplate();
-});
+onMounted(loadTemplate);
 </script>
 
 <style scoped>

@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/baixuejie/key-management-tool/backend/internal/models"
 	"gorm.io/gorm"
@@ -18,13 +19,20 @@ func NewKeySpecService(db *gorm.DB) *KeySpecService {
 
 // CreateKeySpec creates a new key specification
 func (s *KeySpecService) CreateKeySpec(name, description string) (*models.KeySpec, error) {
+	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, errors.New("name cannot be empty")
 	}
 
+	var maxOrder int
+	if err := s.db.Model(&models.KeySpec{}).Select("COALESCE(MAX(display_order), 0)").Scan(&maxOrder).Error; err != nil {
+		return nil, fmt.Errorf("failed to calculate display order: %w", err)
+	}
+
 	keySpec := &models.KeySpec{
-		Name:        name,
-		Description: description,
+		Name:         name,
+		Description:  strings.TrimSpace(description),
+		DisplayOrder: maxOrder + 1,
 	}
 
 	if err := s.db.Create(keySpec).Error; err != nil {
@@ -53,7 +61,7 @@ func (s *KeySpecService) GetKeySpec(id uint) (*models.KeySpec, error) {
 // ListKeySpecs retrieves all key specifications (excluding soft deleted)
 func (s *KeySpecService) ListKeySpecs() ([]models.KeySpec, error) {
 	var keySpecs []models.KeySpec
-	if err := s.db.Order("created_at DESC").Find(&keySpecs).Error; err != nil {
+	if err := s.db.Order("display_order ASC").Order("created_at DESC").Find(&keySpecs).Error; err != nil {
 		return nil, fmt.Errorf("failed to list key specs: %w", err)
 	}
 
@@ -62,6 +70,7 @@ func (s *KeySpecService) ListKeySpecs() ([]models.KeySpec, error) {
 
 // UpdateKeySpec updates an existing key specification
 func (s *KeySpecService) UpdateKeySpec(id uint, name, description string) (*models.KeySpec, error) {
+	name = strings.TrimSpace(name)
 	if name == "" {
 		return nil, errors.New("name cannot be empty")
 	}
@@ -75,7 +84,7 @@ func (s *KeySpecService) UpdateKeySpec(id uint, name, description string) (*mode
 	}
 
 	keySpec.Name = name
-	keySpec.Description = description
+	keySpec.Description = strings.TrimSpace(description)
 
 	if err := s.db.Save(&keySpec).Error; err != nil {
 		if errors.Is(err, gorm.ErrDuplicatedKey) {
@@ -85,6 +94,57 @@ func (s *KeySpecService) UpdateKeySpec(id uint, name, description string) (*mode
 	}
 
 	return &keySpec, nil
+}
+
+// ReorderKeySpecs updates key spec display order by ID sequence.
+func (s *KeySpecService) ReorderKeySpecs(ids []uint) error {
+	if len(ids) == 0 {
+		return errors.New("ids cannot be empty")
+	}
+
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		var keySpecs []models.KeySpec
+		if err := tx.Order("display_order ASC").Order("created_at DESC").Find(&keySpecs).Error; err != nil {
+			return fmt.Errorf("failed to list key specs: %w", err)
+		}
+		if len(keySpecs) == 0 {
+			return nil
+		}
+
+		existing := make(map[uint]models.KeySpec, len(keySpecs))
+		for _, spec := range keySpecs {
+			existing[spec.ID] = spec
+		}
+
+		used := make(map[uint]bool, len(ids))
+		order := 1
+		for _, id := range ids {
+			if used[id] {
+				continue
+			}
+			spec, ok := existing[id]
+			if !ok {
+				return fmt.Errorf("key spec with ID %d not found", id)
+			}
+			if err := tx.Model(&models.KeySpec{}).Where("id = ?", spec.ID).Update("display_order", order).Error; err != nil {
+				return fmt.Errorf("failed to update key spec order: %w", err)
+			}
+			used[id] = true
+			order++
+		}
+
+		for _, spec := range keySpecs {
+			if used[spec.ID] {
+				continue
+			}
+			if err := tx.Model(&models.KeySpec{}).Where("id = ?", spec.ID).Update("display_order", order).Error; err != nil {
+				return fmt.Errorf("failed to update key spec order: %w", err)
+			}
+			order++
+		}
+
+		return nil
+	})
 }
 
 // DeleteKeySpec soft deletes a key specification

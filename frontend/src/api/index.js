@@ -47,6 +47,7 @@ export const keyAPI = {
   list: (specId) => apiClient.get(`/keys?spec_id=${specId}`),
   create: (data) => apiClient.post('/keys', data),
   get: (id) => apiClient.get(`/keys/${id}`),
+  update: (id, data) => apiClient.put(`/keys/${id}`, data),
   delete: (id) => apiClient.delete(`/keys/${id}`),
 };
 
